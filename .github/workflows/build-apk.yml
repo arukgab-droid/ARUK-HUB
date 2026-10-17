@@ -3,7 +3,11 @@ name: Build ARUK HUB APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -13,30 +17,35 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
+      - name: Check Android project
+        run: |
+          echo "Checking Android project..."
+          if [ ! -f "settings.gradle" ] && [ ! -f "settings.gradle.kts" ]; then
+            echo "ERROR: Android project is missing settings.gradle"
+            exit 1
+          fi
+          if [ ! -f "app/build.gradle" ] && [ ! -f "app/build.gradle.kts" ]; then
+            echo "ERROR: app/build.gradle is missing"
+            exit 1
+          fi
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Check project files
-        run: |
-          echo "ARUK HUB Android project files will be checked here."
-          find . -maxdepth 3 -type f
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Build APK
         run: |
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug
-          else
-            echo "Android project is not added yet."
-            exit 1
-          fi
+          gradle --version
+          gradle --no-daemon assembleDebug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ARUK-HUB-APK
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
